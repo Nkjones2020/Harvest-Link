@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/harvestlink}
+    username: ${SPRING_DATASOURCE_USERNAME:hl_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:hl_secret}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  sql:
+    init:
+      mode: always
+
+server:
+  port: 8080
+
+logging:
+  level:
+    app.harvestlink: DEBUG

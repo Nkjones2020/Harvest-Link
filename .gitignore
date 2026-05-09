@@ -1,0 +1,47 @@
+# Node.js
+node_modules/
+dist/
+build/
+.npm
+package-lock.json
+yarn.lock
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+.project
+.classpath
+.settings/
+.factorypath
+
+# Expo / React Native
+.expo/
+*.jks
+*.p8
+*.pyc
+*.keystore
+android/
+ios/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Docker
+.docker/
+
+# Build artifacts
+out/
+bin/

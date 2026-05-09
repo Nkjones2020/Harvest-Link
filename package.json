@@ -1,0 +1,15 @@
+{
+  "name": "harvestlink",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "mobile": "npm start --workspace=@harvestlink/mobile",
+    "api": "npm run dev --workspace=@harvestlink/api-gateway",
+    "spoilage": "cd apps/spoilage-engine && mvn spring-boot:run",
+    "dashboard": "npm run dev --workspace=@harvestlink/web-dashboard",
+    "dashbord": "npm run dashboard"
+  }
+}

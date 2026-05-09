@@ -1,0 +1,102 @@
+services:
+  # ─── PostgreSQL ───────────────────────────────────────────
+  postgres:
+    image: timescale/timescaledb-ha:pg16
+    container_name: hl_postgres
+    environment:
+      POSTGRES_DB: harvestlink
+      POSTGRES_USER: hl_user
+      POSTGRES_PASSWORD: hl_secret
+    ports:
+      - "${HL_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../db/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hl_user -d harvestlink"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: hl_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  # ─── Elasticsearch ────────────────────────────────────────
+  elasticsearch:
+    image: elasticsearch:8.13.0
+    container_name: hl_elastic
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
+  # ─── API Gateway (Node.js + Fastify) ─────────────────────
+  api-gateway:
+    build:
+      context: ../apps/api-gateway
+      dockerfile: Dockerfile
+    container_name: hl_api
+    ports:
+      - "${HL_API_PORT:-3001}:3000"
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://hl_user:hl_secret@postgres:5432/harvestlink
+      REDIS_URL: redis://redis:6379
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      SPOILAGE_ENGINE_URL: http://spoilage-engine:8080
+      JWT_SECRET: dev_jwt_secret_change_in_prod
+      JWT_REFRESH_SECRET: dev_refresh_secret_change_in_prod
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - ../apps/api-gateway/src:/app/src # Hot reload in dev
+    command: npm run dev
+
+  # ─── Spoilage Engine (Spring Boot) ───────────────────────
+  spoilage-engine:
+    build:
+      context: ../apps/spoilage-engine
+      dockerfile: Dockerfile
+    container_name: hl_spoilage
+    ports:
+      - "${HL_SPOILAGE_PORT:-8081}:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/harvestlink
+      SPRING_DATASOURCE_USERNAME: hl_user
+      SPRING_DATASOURCE_PASSWORD: hl_secret
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY:-no_key_provided}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ─── Nginx Reverse Proxy ──────────────────────────────────
+  nginx:
+    image: nginx:alpine
+    container_name: hl_nginx
+    ports:
+      - "${HL_NGINX_PORT:-8088}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api-gateway
+      - spoilage-engine
+
+volumes:
+  postgres_data:
+  redis_data:
+  es_data:
