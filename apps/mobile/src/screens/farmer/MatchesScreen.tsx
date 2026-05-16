@@ -15,7 +15,7 @@ import { Phone, MessageSquare, MapPin, TrendingDown, ChevronLeft, Star, Info, Se
 
 const { width } = Dimensions.get('window');
 
-const API_BASE_URL = 'http://localhost:3005/api';
+import { API_BASE_URL } from '../../api/config';
 
 export default function MatchesScreen({ route, navigation }: any) {
   const { listingId, cropType, spoilageRisk } = route.params || { listingId: '1', cropType: 'Tomatoes', spoilageRisk: 'red' };

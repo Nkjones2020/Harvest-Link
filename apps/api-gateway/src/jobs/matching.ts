@@ -51,10 +51,16 @@ export const matchingWorker = new Worker('matching', async (job) => {
       if (listing.spoilage_risk === 'red') score += 0.2; // Spoilage premium for urgency
 
       await sql`
-        INSERT INTO matches (listing_id, request_id, score, status)
-        VALUES (${listingId}, ${match.request_id}, ${Math.min(score, 1.0)}, 'pending')
-        ON CONFLICT (listing_id, request_id) DO UPDATE 
-        SET score = EXCLUDED.score, updated_at = NOW()
+        INSERT INTO matches (
+          listing_id, purchase_request_id, buyer_id, farmer_id, 
+          match_score, status, distance_km
+        )
+        VALUES (
+          ${listingId}, ${match.request_id}, ${match.buyer_id}, ${listing.farmer_id}, 
+          ${Math.min(score, 1.0)}, 'pending', ${match.distance_km}
+        )
+        ON CONFLICT ON CONSTRAINT unique_listing_request DO UPDATE
+        SET match_score = EXCLUDED.match_score, updated_at = NOW()
       `;
       
       console.log(`[Match Found] ${listing.crop_type} -> ${match.buyer_name} (${match.distance_km.toFixed(1)}km, Score: ${score.toFixed(2)})`);

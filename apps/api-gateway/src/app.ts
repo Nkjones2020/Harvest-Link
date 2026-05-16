@@ -5,14 +5,12 @@ import rateLimit from '@fastify/rate-limit';
 import jwt from '@fastify/jwt';
 import { authRoutes } from './routes/auth.js';
 import { listingsRoutes } from './routes/listings.js';
+import { offersRoutes } from './routes/offers.js';
+import { notificationRoutes } from './routes/notifications.js';
 import './jobs/matching.js'; // Start the BullMQ worker
 
 const app = Fastify({ 
-  logger: {
-    transport: {
-      target: 'pino-pretty'
-    }
-  } 
+  logger: true
 });
 
 // Plugins
@@ -35,6 +33,8 @@ app.decorate('authenticate', async (request: any, reply: any) => {
 // Routes
 await app.register(authRoutes, { prefix: '/api/auth' });
 await app.register(listingsRoutes, { prefix: '/api/listings' });
+await app.register(offersRoutes, { prefix: '/api/offers' });
+await app.register(notificationRoutes, { prefix: '/api/notifications' });
 
 // Health Check
 app.get('/health', async () => {
@@ -43,7 +43,7 @@ app.get('/health', async () => {
 
 const start = async () => {
   try {
-    const port = parseInt(process.env.PORT || '3000');
+    const port = parseInt(process.env.PORT || '3005');
     await app.listen({ port, host: '0.0.0.0' });
     console.log(`API Gateway running at http://0.0.0.0:${port}`);
   } catch (err) {

@@ -3,8 +3,10 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, Image, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SpoilageCountdown } from '../../components/SpoilageCountdown';
 import { useFarmerStore } from '../../store/farmerStore';
-import { useMyListings } from '../../api/listings';
-import { Tractor, Users, AlertTriangle, TrendingUp, Bell, Search, Plus, MapPin } from 'lucide-react-native';
+import { useMyListings, useDeleteListing } from '../../api/listings';
+import { Tractor, Users, AlertTriangle, TrendingUp, Bell, Search, Plus, MapPin, Trash2 } from 'lucide-react-native';
+import { useAuthStore } from '../../store/authStore';
+import { Alert } from 'react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -42,8 +44,31 @@ const MOCK_LISTINGS = [
 ];
 
 export default function DashboardScreen({ navigation }: any) {
+  const user = useAuthStore(state => state.user);
   const { listings: localListings } = useFarmerStore();
   const { data: serverListings, isLoading } = useMyListings();
+  const deleteListing = useDeleteListing();
+
+  const handleDelete = (id: string, cropType: string) => {
+    Alert.alert(
+      'Delete Harvest',
+      `Are you sure you want to delete your ${cropType} harvest listing? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteListing.mutateAsync(id);
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete listing');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   // Prefer server data, fallback to local (optimistic) then mock
   const listings = serverListings || (localListings.length > 0 ? localListings : MOCK_LISTINGS);
@@ -70,8 +95,22 @@ export default function DashboardScreen({ navigation }: any) {
     >
       <View style={styles.cardHeader}>
         <View style={styles.cropInfo}>
-          <Text style={styles.cropTitle}>{item.crop_type}</Text>
-          <Text style={styles.quantityText}>{item.quantity_kg}kg</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.cropTitle}>{item.crop_type}</Text>
+            <TouchableOpacity onPress={() => handleDelete(item.id, item.crop_type)} style={styles.deleteBtn}>
+              <Trash2 size={18} color="#ef4444" />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={[styles.quantityText, parseFloat(item.quantity_kg) <= 0 && { color: '#94a3b8', textDecorationLine: 'line-through' }]}>
+              {item.quantity_kg}kg
+            </Text>
+            {parseFloat(item.quantity_kg) <= 0 && (
+              <View style={styles.soldBadgeSmall}>
+                <Text style={styles.soldBadgeTextSmall}>SOLD</Text>
+              </View>
+            )}
+          </View>
         </View>
         <SpoilageCountdown 
           spoilageDays={item.spoilage_days} 
@@ -107,13 +146,15 @@ export default function DashboardScreen({ navigation }: any) {
         {/* Profile Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Image 
-              source={{ uri: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix' }} 
-              style={styles.avatar}
-            />
+            <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+              <Image 
+                source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name || 'Felix'}` }} 
+                style={styles.avatar}
+              />
+            </TouchableOpacity>
             <View>
               <Text style={styles.welcomeText}>Hello,</Text>
-              <Text style={styles.userName}>John Farmer</Text>
+              <Text style={styles.userName}>{user?.name || 'John Farmer'}</Text>
             </View>
           </View>
           <TouchableOpacity 
@@ -351,6 +392,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 2,
   },
+  soldBadgeSmall: {
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  soldBadgeTextSmall: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+  },
   progressBarBg: {
     height: 6,
     backgroundColor: '#f1f5f9',
@@ -412,5 +464,8 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: '#94a3b8',
+  },
+  deleteBtn: {
+    padding: 4,
   },
 });

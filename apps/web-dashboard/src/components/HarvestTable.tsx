@@ -3,13 +3,14 @@ import { MoreHorizontal, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
 
 interface HarvestTableProps {
   data: any[];
+  title?: string;
 }
 
-const HarvestTable: React.FC<HarvestTableProps> = ({ data }) => {
+const HarvestTable: React.FC<HarvestTableProps> = ({ data, title = 'Recent Harvests' }) => {
   return (
     <div className="card" style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Recent Harvests</h3>
+        <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>{title}</h3>
         <button className="card" style={{ padding: '0.5rem', display: 'flex', alignItems: 'center' }}>
           <MoreHorizontal size={20} color="#64748b" />
         </button>

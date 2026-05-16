@@ -8,51 +8,57 @@ import {
   Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Bell, AlertTriangle, TrendingUp, ShoppingBag, ChevronLeft, Trash2 } from 'lucide-react-native';
+import { Bell, AlertTriangle, TrendingUp, ShoppingBag, ChevronLeft, Trash2, Banknote, Clock } from 'lucide-react-native';
+import { useNotifications, useMarkNotificationRead, useClearNotifications } from '../../api/notifications';
+import { ActivityIndicator, RefreshControl } from 'react-native';
 
-const MOCK_NOTIFS = [
-  {
-    id: '1',
-    type: 'alert',
-    title: 'Spoilage Warning!',
-    body: 'Your Batch #8821 (Tomatoes) is reaching a critical risk level. Consider dropping the price to sell faster.',
-    time: '2m ago',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'match',
-    title: 'New Buyer Match!',
-    body: 'Fresh Mart Accra is looking for 200kg of Maize. They are only 2.4km away from your farm.',
-    time: '15m ago',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'order',
-    title: 'Order Completed',
-    body: 'Transaction for 500kg of Onions has been confirmed. Payment is being processed.',
-    time: '1h ago',
-    read: true,
-  },
-];
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+
 
 export default function NotificationsScreen({ navigation }: any) {
-  const renderItem = ({ item }: { item: typeof MOCK_NOTIFS[0] }) => (
-    <TouchableOpacity style={[styles.notifCard, !item.read && styles.unreadCard]}>
-      <View style={[styles.iconBox, { backgroundColor: item.type === 'alert' ? '#fee2e2' : item.type === 'match' ? '#dcfce7' : '#dbeafe' }]}>
+  const { data: notifications = [], isLoading, refetch } = useNotifications();
+  const markRead = useMarkNotificationRead();
+  const clearAll = useClearNotifications();
+
+  const handlePress = (item: any) => {
+    if (!item.is_read) {
+      markRead.mutate(item.id);
+    }
+  };
+
+  const renderItem = ({ item }: { item: any }) => (
+    <TouchableOpacity 
+      style={[styles.notifCard, !item.is_read && styles.unreadCard]}
+      onPress={() => handlePress(item)}
+    >
+      <View style={[styles.iconBox, { 
+        backgroundColor: 
+          item.type === 'alert' ? '#fee2e2' : 
+          item.type === 'match' ? '#dcfce7' : 
+          item.type === 'payment' ? '#fef3c7' : '#dbeafe' 
+      }]}>
         {item.type === 'alert' && <AlertTriangle size={20} color="#ef4444" />}
         {item.type === 'match' && <TrendingUp size={20} color="#22c55e" />}
-        {item.type === 'order' && <ShoppingBag size={20} color="#3b82f6" />}
+        {item.type === 'payment' && <Banknote size={20} color="#f59e0b" />}
+        {item.type === 'info' && <Bell size={20} color="#3b82f6" />}
       </View>
       <View style={styles.notifContent}>
         <View style={styles.notifHeader}>
           <Text style={styles.notifTitle}>{item.title}</Text>
-          <Text style={styles.notifTime}>{item.time}</Text>
+          <Text style={styles.notifTime}>{timeAgo(item.created_at)}</Text>
         </View>
-        <Text style={styles.notifBody} numberOfLines={2}>{item.body}</Text>
+        <Text style={styles.notifBody} numberOfLines={2}>{item.message}</Text>
       </View>
-      {!item.read && <View style={styles.unreadDot} />}
+      {!item.is_read && <View style={styles.unreadDot} />}
     </TouchableOpacity>
   );
 
@@ -63,23 +69,32 @@ export default function NotificationsScreen({ navigation }: any) {
           <ChevronLeft size={28} color="#1e293b" />
         </TouchableOpacity>
         <Text style={styles.title}>Notifications</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => clearAll.mutate()}>
           <Trash2 size={22} color="#64748b" />
         </TouchableOpacity>
       </View>
 
-      <FlatList
-        data={MOCK_NOTIFS}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Bell size={64} color="#e2e8f0" />
-            <Text style={styles.emptyText}>All caught up!</Text>
-          </View>
-        }
-      />
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#22c55e" />
+        </View>
+      ) : (
+        <FlatList
+          data={notifications}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={refetch} />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Bell size={64} color="#e2e8f0" />
+              <Text style={styles.emptyText}>All caught up!</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -173,5 +188,10 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     marginTop: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

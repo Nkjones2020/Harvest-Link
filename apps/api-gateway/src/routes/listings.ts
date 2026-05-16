@@ -32,19 +32,18 @@ export async function listingsRoutes(app: FastifyInstance) {
 
   app.post('/', {
     preHandler: [app.authenticate as any],
-    schema: {
-      body: z.object({
-        cropType: z.string(),
-        quantityKg: z.number().positive(),
-        harvestDate: z.string(),
-        storageMethod: z.enum(['open_air', 'grain_bag', 'cold_store', 'silo', 'other']),
-        latitude: z.number(),
-        longitude: z.number(),
-        askingPrice: z.number().optional(),
-      })
-    }
   }, async (request, reply) => {
-    const body = request.body as any;
+    const bodySchema = z.object({
+      cropType: z.string(),
+      quantityKg: z.number().positive(),
+      harvestDate: z.string(),
+      storageMethod: z.enum(['open_air', 'grain_bag', 'cold_store', 'silo', 'other']),
+      latitude: z.number(),
+      longitude: z.number(),
+      askingPrice: z.number().optional(),
+    });
+    
+    const body = bodySchema.parse(request.body);
     const user = (request as any).user;
 
     try {
@@ -73,11 +72,11 @@ export async function listingsRoutes(app: FastifyInstance) {
       const [listing] = await sql`
         INSERT INTO listings (
           farmer_id, crop_type, quantity_kg, harvest_date, 
-          storage_method, latitude, longitude, asking_price,
+          storage_method, location, asking_price,
           spoilage_days, spoilage_risk, spoilage_score
         ) VALUES (
           ${user.id}, ${body.cropType}, ${body.quantityKg}, ${body.harvestDate},
-          ${body.storageMethod}, ${body.latitude}, ${body.longitude}, ${body.askingPrice || 0},
+          ${body.storageMethod}, ST_SetSRID(ST_MakePoint(${body.longitude}, ${body.latitude}), 4326), ${body.askingPrice || 0},
           ${spoilage.spoilageDays}, ${spoilage.spoilageRisk}, ${spoilage.spoilageScore}
         ) RETURNING *
       `;
@@ -118,5 +117,29 @@ export async function listingsRoutes(app: FastifyInstance) {
     `;
     
     return matches;
+  });
+
+  // DELETE a listing
+  app.delete('/:id', {
+    preHandler: [app.authenticate as any],
+  }, async (request, reply) => {
+    const { id } = request.params as any;
+    const user = (request as any).user;
+
+    const [listing] = await sql`
+      SELECT id FROM listings WHERE id = ${id} AND farmer_id = ${user.id}
+    `;
+
+    if (!listing) {
+      return reply.code(404).send({ error: 'Listing not found or unauthorised' });
+    }
+
+    // Delete related matches first
+    await sql`DELETE FROM matches WHERE listing_id = ${id}`;
+    
+    // Delete the listing
+    await sql`DELETE FROM listings WHERE id = ${id}`;
+
+    return { message: 'Listing deleted successfully' };
   });
 }

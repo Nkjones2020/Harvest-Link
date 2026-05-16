@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { parse } from 'pg-connection-string';
 
-const { host, port, database, user, password } = parse(process.env.DATABASE_URL || '');
+const { host, port, database, user, password } = parse(process.env.DATABASE_URL || 'postgresql://hl_user:hl_secret@localhost:5433/harvestlink');
 
 export default {
   driver: 'postgres',
@@ -10,6 +10,6 @@ export default {
   database,
   username: user,
   password,
-  dir: '../../db/migrations',
+  dir: 'migrations',
   require: ['dotenv/config']
 };

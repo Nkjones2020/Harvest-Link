@@ -48,7 +48,7 @@ services:
       dockerfile: Dockerfile
     container_name: hl_api
     ports:
-      - "${HL_API_PORT:-3001}:3000"
+      - "${HL_API_PORT:-3005}:3005"
     environment:
       NODE_ENV: development
       DATABASE_URL: postgresql://hl_user:hl_secret@postgres:5432/harvestlink
@@ -64,6 +64,7 @@ services:
         condition: service_started
     volumes:
       - ../apps/api-gateway/src:/app/src # Hot reload in dev
+      - ../db/migrations:/app/migrations # For migrations
     command: npm run dev
 
   # ─── Spoilage Engine (Spring Boot) ───────────────────────

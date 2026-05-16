@@ -9,23 +9,68 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Phone, ArrowRight, Tractor, ShoppingBag, ShieldCheck } from 'lucide-react-native';
+import { useAuthStore } from '../../store/authStore';
+import { API_BASE_URL } from '../../api/config';
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen({ navigation }: any) {
+  const setUser = useAuthStore(state => state.setUser);
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<'farmer' | 'buyer'>('farmer');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (phone.length < 9) return;
-    if (role === 'farmer') {
-      navigation.navigate('FarmerStack');
-    } else {
-      navigation.navigate('BuyerStack');
+    setLoading(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      
+      const contentType = res.headers.get('content-type');
+      let data: any;
+      if (contentType && contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || 'Server returned an error');
+      }
+
+      if (!res.ok) throw new Error(data?.error || 'Login failed');
+
+      setUser(data.user, data.access_token);
+
+      // Navigate based on the selected role, provided the user has that role
+      const targetRole = data.user.roles?.includes(role) ? role : data.user.role;
+
+      if (targetRole === 'farmer') {
+        navigation.navigate('FarmerStack');
+      } else {
+        navigation.navigate('BuyerStack');
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        Alert.alert('Timeout', 'The server took too long to respond. Please check if your API Gateway is running and your IP is correct.');
+      } else {
+        Alert.alert('Connection Error', err.message || 'Could not connect to the server. Please check your internet or API IP.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -88,12 +133,18 @@ export default function LoginScreen({ navigation }: any) {
           </View>
 
           <TouchableOpacity 
-            style={[styles.loginButton, phone.length < 9 && styles.loginButtonDisabled]} 
+            style={[styles.loginButton, (phone.length < 9 || loading) && styles.loginButtonDisabled]} 
             onPress={handleLogin}
-            disabled={phone.length < 9}
+            disabled={phone.length < 9 || loading}
           >
-            <Text style={styles.loginButtonText}>Sign In</Text>
-            <ArrowRight size={20} color="#fff" />
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.loginButtonText}>Sign In</Text>
+                <ArrowRight size={20} color="#fff" />
+              </>
+            )}
           </TouchableOpacity>
 
           <View style={styles.footer}>
@@ -101,7 +152,10 @@ export default function LoginScreen({ navigation }: any) {
               <ShieldCheck size={14} color="#16a34a" />
               <Text style={styles.secureText}>Secure Verification</Text>
             </View>
-            <TouchableOpacity style={styles.registerLink}>
+            <TouchableOpacity 
+              style={styles.registerLink}
+              onPress={() => navigation.navigate('Signup')}
+            >
               <Text style={styles.noAccountText}>Don't have an account? </Text>
               <Text style={styles.registerText}>Sign Up</Text>
             </TouchableOpacity>

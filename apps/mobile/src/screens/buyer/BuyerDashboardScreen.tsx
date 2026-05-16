@@ -7,7 +7,8 @@ import {
   TouchableOpacity, 
   Dimensions,
   Image,
-  FlatList
+  FlatList,
+  RefreshControl
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ShoppingBag, MapPin, Scan, TrendingDown, Clock, Search, Bell, ChevronRight, Star } from 'lucide-react-native';
@@ -22,10 +23,18 @@ const STATS = [
 ];
 
 export default function BuyerDashboardScreen({ navigation }: any) {
-  const { data: listings } = useMarketplaceListings();
+  const { data: listings, refetch, isFetching } = useMarketplaceListings();
 
-  // Highlight urgent harvests nearby
-  const urgentHarvests = listings?.filter((l: any) => l.spoilage_risk === 'red').slice(0, 3) || [];
+  const onRefresh = React.useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  // Highlight urgent harvests nearby (only if not sold out)
+  const urgentHarvests = listings?.filter((l: any) => 
+    l.spoilage_risk === 'red' && 
+    l.status?.toLowerCase() !== 'sold' && 
+    parseFloat(l.quantity_kg || '0') > 0
+  ).slice(0, 3) || [];
 
   const renderStatCard = (item: typeof STATS[0]) => (
     <View style={[styles.statCard, { backgroundColor: item.color + '10' }]}>
@@ -39,7 +48,17 @@ export default function BuyerDashboardScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={onRefresh}
+            colors={['#22c55e']}
+            tintColor="#22c55e"
+          />
+        }
+      >
         <View style={styles.header}>
           <View>
             <Text style={styles.welcomeText}>Welcome back,</Text>
@@ -103,11 +122,16 @@ export default function BuyerDashboardScreen({ navigation }: any) {
               <View style={styles.urgentImageContainer}>
                 <Image 
                   source={{ uri: 'https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&q=80&w=200' }} 
-                  style={styles.urgentImage} 
+                  style={[styles.urgentImage, (item.status === 'sold' || parseFloat(item.quantity_kg) <= 0) && { opacity: 0.5 }]} 
                 />
                 <View style={styles.urgentBadge}>
                   <Text style={styles.urgentBadgeText}>URGENT</Text>
                 </View>
+                {(item.status === 'sold' || parseFloat(item.quantity_kg) <= 0) && (
+                  <View style={styles.soldBadgeOverlay}>
+                    <Text style={styles.soldBadgeText}>SOLD</Text>
+                  </View>
+                )}
               </View>
               <View style={styles.urgentContent}>
                 <Text style={styles.urgentTitle}>{item.crop_type}</Text>
@@ -383,5 +407,22 @@ const styles = StyleSheet.create({
   emptyText: {
     color: '#94a3b8',
     fontSize: 14,
+  },
+  soldBadgeOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  soldBadgeText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '900',
+    backgroundColor: '#ef4444',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    transform: [{ rotate: '-10deg' }],
   },
 });

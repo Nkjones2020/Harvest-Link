@@ -69,7 +69,7 @@ export default function OrderSuccessScreen({ route, navigation }: any) {
 
         <TouchableOpacity 
           style={styles.primaryBtn}
-          onPress={() => navigation.navigate('BuyerDashboard')}
+          onPress={() => navigation.navigate('BuyerMain')}
         >
           <Home size={20} color="#fff" />
           <Text style={styles.primaryBtnText}>Back to Home</Text>

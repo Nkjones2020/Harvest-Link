@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFarmerStore } from '../../store/farmerStore';
-import { ChevronLeft, Calendar, Package, Droplets, Wind, ThermometerSnowflake, Warehouse } from 'lucide-react-native';
+import { ChevronLeft, Calendar, Package, Warehouse, Wind, ThermometerSnowflake, Tag, TrendingUp } from 'lucide-react-native';
 import { useCreateListing } from '../../api/listings';
 
 const CROP_TYPES = [
@@ -22,7 +22,23 @@ const CROP_TYPES = [
   { name: 'Cassava', emoji: '🥔' },
   { name: 'Yam', emoji: '🍠' },
   { name: 'Plantain', emoji: '🍌' },
-  { name: 'Pepper', emoji: '🌶️' }
+  { name: 'Pepper', emoji: '🌶️' },
+  { name: 'Cabbage', emoji: '🥬' },
+  { name: 'Carrot', emoji: '🥕' },
+  { name: 'Beans', emoji: '🫘' },
+  { name: 'Mango', emoji: '🥭' },
+  { name: 'Orange', emoji: '🍊' },
+  { name: 'Pineapple', emoji: '🍍' },
+  { name: 'Avocado', emoji: '🥑' },
+  { name: 'Watermelon', emoji: '🍉' },
+  { name: 'Papaya', emoji: '🥣' }, // Papaya doesn't have a direct emoji, bowl is often used or mango/peach
+  { name: 'Banana', emoji: '🍌' },
+  { name: 'Okra', emoji: '🥗' },
+  { name: 'Cucumber', emoji: '🥒' },
+  { name: 'Spinach', emoji: '🌿' },
+  { name: 'Ginger', emoji: '🫚' },
+  { name: 'Garlic', emoji: '🧄' },
+  { name: 'Lettuce', emoji: '🥬' }
 ];
 
 const STORAGE_METHODS = [
@@ -35,6 +51,7 @@ const STORAGE_METHODS = [
 export default function HarvestLogScreen({ navigation }: any) {
   const [cropType, setCropType] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [askingPrice, setAskingPrice] = useState('');
   const [storageMethod, setStorageMethod] = useState('');
   const { addPendingListing } = useFarmerStore();
   const createListing = useCreateListing();
@@ -45,10 +62,11 @@ export default function HarvestLogScreen({ navigation }: any) {
     }
 
     const payload = {
-      cropType,
+      cropType: cropType.toLowerCase(),
       quantityKg: parseFloat(quantity),
       harvestDate: new Date().toISOString().split('T')[0],
       storageMethod,
+      askingPrice: askingPrice ? parseFloat(askingPrice) : undefined,
       latitude: 0,
       longitude: 0,
     };
@@ -63,10 +81,14 @@ export default function HarvestLogScreen({ navigation }: any) {
       // 2. Call API (if backend is running)
       await createListing.mutateAsync(payload);
       
-      navigation.goBack();
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      }
     } catch (error) {
       console.warn('API Error, saved locally:', error);
-      navigation.goBack();
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      }
     }
   };
 
@@ -134,6 +156,29 @@ export default function HarvestLogScreen({ navigation }: any) {
                   value={new Date().toLocaleDateString()}
                 />
               </View>
+            </View>
+          </View>
+
+          {/* ── Asking Price ── */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Initial Asking Price</Text>
+            <View style={styles.inputWrapper}>
+              <Tag size={20} color="#64748b" style={styles.inputIcon} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Price per kg (GHS)"
+                keyboardType="numeric"
+                value={askingPrice}
+                onChangeText={setAskingPrice}
+              />
+              <Text style={styles.currencyLabel}>GHS / kg</Text>
+            </View>
+            {/* Price tip */}
+            <View style={styles.priceTipCard}>
+              <TrendingUp size={16} color="#3b82f6" />
+              <Text style={styles.priceTipText}>
+                Tip: Set a competitive price to attract buyers faster. Buyers can make counter-offers.
+              </Text>
             </View>
           </View>
 
@@ -282,6 +327,30 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     fontSize: 16,
     color: '#1e293b',
+    fontWeight: '500',
+  },
+  currencyLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#94a3b8',
+    paddingLeft: 8,
+  },
+  priceTipCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#eff6ff',
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  priceTipText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#3b82f6',
+    lineHeight: 20,
     fontWeight: '500',
   },
   storageGrid: {

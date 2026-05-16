@@ -14,7 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 
 const { width, height } = Dimensions.get('window');
 
-const API_BASE_URL = 'http://localhost:3005/api';
+import { API_BASE_URL } from '../../api/config';
 
 export default function ScannerScreen({ navigation }: any) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -143,7 +143,7 @@ export default function ScannerScreen({ navigation }: any) {
                   style={styles.actionBtn}
                   onPress={() => {
                     setScannedId(null);
-                    navigation.navigate('Marketplace');
+                    navigation.navigate('BuyerMain');
                   }}
                 >
                   <Text style={styles.actionBtnText}>Make an Offer</Text>
